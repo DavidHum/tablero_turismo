@@ -318,3 +318,37 @@ tourist_casi_clean %>%
   # filter(continentes %in% input$continentes) %>%
   group_by(aeropuerto, fecha) %>%
   summarise(cantidad = sum(cantidad, na.rm = TRUE))
+2015:2019
+
+map(2015:2019,limpiar_data)
+
+turistass <- juntar_dataframes(list.files("data_clean"))
+
+turistass %>% 
+  distinct(aeropuerto)
+
+as.list(1:12) %>% set_names(distinct(turistass, meses, meses_numero)$meses)
+
+str_replace_all(turistass$aeropuerto, c("AEROPUERTO INTERNACIONAL" = "", "DE" = "") )
+
+aeropuertos <- turistass %>% 
+  distinct(aeropuerto) %>%
+  unlist()
+
+aeropuerto_lists <-
+  as.list(1:length(aeropuertos)) %>% set_names(aeropuertos)
+aeropuerto_lists$`Todos` <- 99
+
+aeropuerto_lists["Todos"]
+
+turistas %>%
+  filter(aeropuerto %in% input$aeropuertos)
+
+turistass %>% 
+  distinct(id_continentes, continentes) %>% 
+  select(id_continentes) %>%
+  unlist() %>% 
+  as.list() %>% 
+  set_names( distinct(turistass, id_continentes, continentes)$continentes)
+
+any()

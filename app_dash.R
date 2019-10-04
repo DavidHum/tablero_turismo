@@ -5,33 +5,74 @@ library(tidyverse)
 library(data.table)
 library(plotly)
 
+source('funciones.R')
+
 if (!exists("turistas")) {
-  turistas <-
-    data.table::fread("data_clean/tourist_clean_2018.csv")
+  turistas <- juntar_dataframes(list.files("data_clean"))
 }
 
-turistas <-
-  data.table::fread("data_clean/tourist_clean_2018.csv")
+aeropuerto_list <-
+  turistas %>% 
+  distinct(id_aeropuerto, aeropuerto) %>% 
+  select(id_aeropuerto) %>%
+  unlist() %>% 
+  as.list() %>% 
+  set_names( distinct(turistas, id_aeropuerto, aeropuerto)$aeropuerto)
 
-aeropuerto_list <- 
-  unique(turistas$aeropuerto)
+aeropuerto_list$`Todos` <- 99
 
+continentes_list <-
+  turistas %>% 
+  distinct(id_continentes, continentes) %>% 
+  select(id_continentes) %>%
+  unlist() %>% 
+  as.list() %>% 
+  set_names( distinct(turistas, id_continentes, continentes)$continentes)
+
+continentes_list$`Todos` <- 99
+
+year_list <-
+  turistas %>% distinct(year) %>% arrange(year) %>% unlist() %>% as.list() %>% set_names()
+
+year_list$`Todos` <- 99
+
+listado_meses = as.list(1:12) %>% set_names(distinct(turistas, meses, meses_numero)$meses)
+
+listado_meses$`Todos` <- 99
 
 header <- dashboardHeader(title = "Entrada de Turistas")
+
 sidebar <- dashboardSidebar(
-  selectizeInput(
+  selectInput(
     inputId = "aeropuertos",
     label = "Selecciona un Aeropuerto",
     choices = aeropuerto_list,
-    selected = "AEROPUERTO INTERNACIONAL DE LAS AMERICAS",
+    selected = 99,
+    selectize = FALSE,
     multiple = TRUE
   ),
   selectInput(
     inputId = "continentes",
     label = "Selecciona un continente",
-    choices = unique(turistas$continentes),
-    selected = "AMERICA CENTRAL Y EL CARIBE",
+    choices = continentes_list,
+    selected = 99,
     multiple = TRUE,
+    selectize = FALSE
+  ),
+  selectInput(
+    inputId = "year",
+    label = "Year:",
+    choices = year_list,
+    selected = 99,
+    size = 4,
+    selectize = FALSE
+  ),
+  selectInput(
+    inputId = "month",
+    label = "Mes:",
+    choices = listado_meses,
+    selected = 99,
+    size = 13,
     selectize = FALSE
   )
 )
@@ -47,16 +88,32 @@ ui <- dashboardPage(header,
 server <- function(input, output, session) {
   base_turistas <- reactive({
     resultado <-
-      turistas %>%
-      filter(aeropuerto %in% input$aeropuertos)
+      turistas
     
-    if (!is_null(input$continentes)) {
+    if (any(input$aeropuertos != 99)) {
       resultado <-
-        resultado %>% filter(continentes %in% input$continentes)
+        turistas %>%
+        filter(id_aeropuerto %in% input$aeropuertos)
     }
+    
+    if (any(input$continentes != 99)) {
+      resultado <-
+        resultado %>% filter(id_continentes %in% input$continentes)
+    }
+    
+    if (input$year != 99) {
+      resultado <-
+        resultado %>% filter(year == input$year)
+    }
+    
+    if (input$month != 99) {
+      resultado <-
+        resultado %>% filter(meses_numero == input$month)
+    }
+    
     resultado
   })
-
+  
   output$plot <- renderPlotly({
     data_top10_nacionalidad <-
       base_turistas() %>%
@@ -65,8 +122,6 @@ server <- function(input, output, session) {
       arrange(desc(cantidad)) %>%
       head(10)
     
-    # data_barras[, .(cantidad = sum(cantidad)),
-    #             by = nacionalidad][order(-cantidad)] %>% head(10)
     data_top10_nacionalidad %>%
       plot_ly(
         x = ~ cantidad,
@@ -125,11 +180,9 @@ server <- function(input, output, session) {
       )
   })
   output$valuebox_total_tour <- renderValueBox({
-    valueBox(
-      base_turistas() %>%
-        summarize(scales::comma(sum(cantidad))) %>% unlist(),
-      "Total de Turistas"
-    )
+    valueBox(base_turistas() %>%
+               summarize(scales::comma(sum(cantidad))) %>% unlist(),
+             "Total de Turistas")
   })
   
 }
